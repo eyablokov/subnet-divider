@@ -7,57 +7,66 @@ them to a predefined number of parts and shows Network Address, Netmask,
 Broadcast, Gateway, Host Range and Host Count information.
 
 Example:
-    $ ./subnet.py 200.100.33.65/26 3
+    $ ./subnet-divider.py 200.100.33.65/26 3
 """
 
 from __future__ import print_function
 import sys
-#import ipaddress
+import ipaddress
 
 # Get the number of parts to which the network will be divided
 parts = sys.argv[2]
 
-# Get address string and CIDR string from command line
-(addr_string, cidr_string) = sys.argv[1].split('/')
+# Get the main network, to divide onto predefined parts
+pair = ipaddress.ip_network(sys.argv[1], strict=False)
 
-# Split address into octets and turn CIDR into int
-addr = addr_string.split('.')
-cidr = int(cidr_string)
+# Get subnets of the main network, as a list
+subnets = list(pair.subnets())
 
-# Initialize the netmask and calculate based on CIDR mask
-mask = [0, 0, 0, 0]
-for i in range(cidr):
-    mask[i//8] = mask[i//8] + (1 << (7 - i % 8))
+for subnet in subnets:
+    sub = str(subnet)
 
-# Initialize net and binary and netmask with addr to get network
-net = []
-for i in range(4):
-    net.append(int(addr[i]) & mask[i])
+    # Get address string and CIDR string from command line
+    (addr_string, cidr_string) = sub.split('/')
 
-# Duplicate net into broad array, gather host bits, and generate broadcast
-broad = list(net)
-brange = 32 - cidr
-for i in range(brange):
-    broad[3-i//8] = broad[3-i//8] + (1 << (i % 8))
+    # Split address into octets and turn CIDR into int
+    addr = addr_string.split('.')
+    cidr = int(cidr_string)
 
-# Locate usable IPs
-hosts = {"first":list(net), "last":list(broad)}
-hosts["first"][3] += 1
-hosts["last"][3] -= 1
+    # Initialize the netmask and calculate based on CIDR mask
+    mask = [0, 0, 0, 0]
+    for i in range(cidr):
+        mask[i//8] = mask[i//8] + (1 << (7 - i % 8))
 
-# Locate network gateway
-gateway = hosts["first"]
+    # Initialize net and binary and netmask with addr to get network
+    net = []
+    for i in range(4):
+        net.append(int(addr[i]) & mask[i])
 
-# Count the difference between first and last host IPs
-hosts["count"] = 0
-for i in range(4):
-    hosts["count"] += (hosts["last"][i] - hosts["first"][i]) * 2**(8*(3-i))
+    # Duplicate net into broad array, gather host bits, and generate broadcast
+    broad = list(net)
+    brange = 32 - cidr
+    for i in range(brange):
+        broad[3-i//8] = broad[3-i//8] + (1 << (i % 8))
 
-# Print information, mapping integer lists to strings for easy printing
-print(("CIDR:       "), str(addr_string) + "/" + str(cidr))
-print(("Netmask:    "), ".".join(map(str, mask)))
-print(("Network:    "), ".".join(map(str, net)))
-print(("Gateway:    "), ".".join(map(str, gateway)))
-print(("Broadcast:  "), ".".join(map(str, broad)))
-print(("Host Range: "), ".".join(map(str, hosts["first"])), "-", ".".join(map(str, hosts["last"])))
-print(("Host Count: "), hosts["count"])
+    # Locate usable IPs
+    hosts = {"first":list(net), "last":list(broad)}
+    hosts["first"][3] += 1
+    hosts["last"][3] -= 1
+
+    # Locate network gateway
+    gateway = hosts["first"]
+
+    # Count the difference between first and last host IPs
+    hosts["count"] = 0
+    for i in range(4):
+        hosts["count"] += (hosts["last"][i] - hosts["first"][i]) * 2**(8*(3-i))
+
+    # Print information, mapping integer lists to strings for easy printing
+    print(("CIDR:       "), str(addr_string) + "/" + str(cidr))
+    print(("Netmask:    "), ".".join(map(str, mask)))
+    print(("Network:    "), ".".join(map(str, net)))
+    print(("Gateway:    "), ".".join(map(str, gateway)))
+    print(("Broadcast:  "), ".".join(map(str, broad)))
+    print(("Host Range: "), ".".join(map(str, hosts["first"])), "-", ".".join(map(str, hosts["last"])))
+    print(("Host Count: "), hosts["count"])
