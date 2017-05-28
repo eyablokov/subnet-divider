@@ -11,17 +11,39 @@ Example:
 """
 
 from __future__ import print_function
+import math
 import sys
 import ipaddress
 
-# Get the number of parts to which the network will be divided
-parts = sys.argv[2]
+
+def power_log(x):
+    """ Get smallest power of 2 greater than (or equal to) a given x. """
+    return 2**(math.ceil(math.log(x, 2)))
+
+def isqrt(n):
+    """ Newton's method for calculating square roots. """
+    x = n
+    y = (x + 1) // 2
+    while y < x:
+        x = y
+        y = (x + n // x) // 2
+    return x
+
 
 # Get the main network, to divide onto predefined parts
 pair = ipaddress.ip_network(sys.argv[1], strict=False)
 
+# Get the require number of subnets to which the network will be divided
+parts = sys.argv[2]
+
+# Extracting netmask of the main network in CIDR
+prefix = pair.prefixlen
+
+# Awareness of subnets' prefix, to divide main network onto
+subnet_diff = isqrt(power_log(float(parts)))
+
 # Get subnets of the main network, as a list
-subnets = list(pair.subnets())
+subnets = list(pair.subnets(prefixlen_diff=subnet_diff))
 
 for subnet in subnets:
     sub = str(subnet)
